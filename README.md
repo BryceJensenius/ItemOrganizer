@@ -39,9 +39,10 @@ The workflow in `.github/workflows/deploy-pages.yml` publishes on every push to 
 
 1. In the GitHub repository, open **Settings > Pages** and choose **GitHub Actions** as the source.
 2. Under **Settings > Secrets and variables > Actions > Variables**, add:
-   - `VITE_BASE_PATH`: `/ItemOrganizer/` (change this if the repository has another name).
+   - `VITE_BASE_PATH`: `/`.
    - `VITE_API_URL`: the browser-reachable HTTPS URL for the local API.
-3. Add `https://YOUR_GITHUB_USER.github.io` to `CORS_ORIGINS` in the root `.env`, then restart the API.
+3. Set the Pages custom domain to `io.tradelens.space` and add a DNS CNAME from `io` to `BryceJensenius.github.io`.
+4. Add `https://io.tradelens.space` to `CORS_ORIGINS` in the root `.env`, then restart the API.
 
 ## Publish the local API securely
 
@@ -50,16 +51,16 @@ The workflow in `.github/workflows/deploy-pages.yml` publishes on every push to 
 Do not port-forward port 8000 on the router. The Compose file keeps it on `127.0.0.1` and provides an opt-in Cloudflare Tunnel that makes an outbound encrypted connection instead:
 
 1. Add a domain to Cloudflare, then open **Networking > Tunnels** and create a remotely managed tunnel.
-2. Add a published application route such as `https://items-api.example.com` with service URL `http://api:8000`.
+2. Add a published application route for `https://api.tradelens.space` with service URL `http://api:8000`.
 3. Put the tunnel token in the root `.env` as `TUNNEL_TOKEN`. It is a backend secret and must never be added to GitHub or a `VITE_*` variable.
-4. Set `CORS_ORIGINS=http://localhost:5173,https://YOUR_GITHUB_USER.github.io` in `.env`. CORS values are frontend origins, not the API hostname.
+4. Set `CORS_ORIGINS=http://localhost:5173,https://io.tradelens.space` in `.env`. CORS values are frontend origins, not the API hostname.
 5. Start the tunnel and API:
 
    ```powershell
    docker compose --profile public up -d --build
    ```
 
-6. Set the GitHub Actions variable `VITE_API_URL` to the public HTTPS API URL, for example `https://items-api.example.com`, and redeploy the frontend.
+6. Set the GitHub Actions variable `VITE_API_URL` to `https://api.tradelens.space` and redeploy the frontend.
 
 The public hostname exposes signup and login by design. Passwords are Argon2-hashed, JWTs expire after 30 days, login is limited to 10 requests per minute per client address, signup to 5 per hour, AI analysis to 20 per hour, and other API traffic to 120 requests per minute. All item and image reads/writes require a JWT and match the JWT user ID in MongoDB. Use a unique random `JWT_SECRET` of at least 32 characters and keep Docker Desktop, MongoDB, the API image, and `cloudflared` updated.
 
