@@ -15,6 +15,7 @@ async function api<T>(path: string, options: RequestInit = {}, token?: string): 
     const body = await response.json().catch(() => ({}))
     throw new Error(body.detail || 'Something went wrong. Is the local API running?')
   }
+  if (response.status === 204) return null as T
   return response.json()
 }
 
