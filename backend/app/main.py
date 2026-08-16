@@ -36,7 +36,7 @@ def client_address(request: Request) -> str:
 
 app = FastAPI(title="Stow Item Organizer API", version="1.0.0")
 origins = [value.strip() for value in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["GET", "POST", "PUT", "OPTIONS"], allow_headers=["Authorization", "Content-Type"])
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Authorization", "Content-Type"])
 limiter = Limiter(key_func=client_address, default_limits=["120/minute"])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -209,6 +209,18 @@ async def create_item(data: Annotated[str, Form()], image: Annotated[UploadFile 
     result = items.insert_one(document)
     document["_id"] = result.inserted_id
     return item_response(document)
+
+
+@app.delete("/items/{item_id}", status_code=204)
+def delete_item(item_id: str, user_id: ObjectId = Depends(current_user)) -> None:
+    if not ObjectId.is_valid(item_id):
+        raise HTTPException(status_code=404, detail="Item not found")
+    existing = items.find_one({"_id": ObjectId(item_id), "user_id": user_id})
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    items.delete_one({"_id": existing["_id"], "user_id": user_id})
+    if existing.get("image_url"):
+        (UPLOAD_DIR / Path(existing["image_url"]).name).unlink(missing_ok=True)
 
 
 @app.put("/items/{item_id}")
